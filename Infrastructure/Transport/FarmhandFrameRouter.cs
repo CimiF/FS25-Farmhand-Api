@@ -88,6 +88,7 @@ public sealed class FarmhandFrameRouter(
 		catch (JsonException exception)
 		{
 			logger.LogWarning(exception, "Ignoring invalid Farmhand {FrameType} frame.", typeof(TFrame).Name);
+			logger.LogDebug("Invalid Farmhand {FrameType} frame content: {FrameContent}", typeof(TFrame).Name, frame.RootElement.ToString());
 			return;
 		}
 

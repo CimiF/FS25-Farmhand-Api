@@ -3,6 +3,7 @@ using FS25Gateway.Application.Services.Mappers;
 using FS25Gateway.Application.StateStore;
 using FS25Gateway.Infrastructure.Transport;
 using FS25Gateway.Infrastructure.Telemetry.Handlers;
+using Serilog;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,8 +33,29 @@ builder.Services.AddSingleton<IPlayersFrameHandler>(serviceProvider => servicePr
 builder.Services.AddSingleton<FarmhandFrameRouter>();
 builder.Services.AddSingleton<IFarmhandFrameReceiver>(serviceProvider => serviceProvider.GetRequiredService<FarmhandFrameRouter>());
 builder.Services.AddHostedService<FarmhandPipeReader>();
+builder.Services.AddHostedService<StartupInitializer>();
+
+builder.Host.UseSerilog();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+builder.Services.Configure<HostOptions>(options =>
+{
+	options.BackgroundServiceExceptionBehavior =
+		BackgroundServiceExceptionBehavior.Ignore;
+});
+
+Log.Logger = new LoggerConfiguration()
+	.MinimumLevel.Information()
+	.WriteTo.Console()
+	.WriteTo.File(
+	"logs/fs25gateway-.log",
+	rollingInterval: RollingInterval.Day,
+	outputTemplate:
+		"{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+		retainedFileCountLimit: 14)
+	.CreateLogger();
 
 var app = builder.Build();
 
@@ -42,14 +64,6 @@ if (app.Environment.IsDevelopment())
 {
 	app.MapOpenApi();
 }
-
-app.MapGet("/", () => "FS25 Gateway running");
-
-app.MapGet("/health", () => new
-{
-	Status = "OK",
-	Time = DateTime.Now
-});
 
 app.MapGet("/api/dashboard/snapshot", (StateStore stateStore) =>
 	Results.Ok(stateStore.Read(state => state)));

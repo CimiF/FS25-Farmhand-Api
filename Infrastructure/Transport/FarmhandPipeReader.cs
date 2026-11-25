@@ -36,6 +36,10 @@ public sealed class FarmhandPipeReader(
 			{
 				logger.LogWarning(exception, "Farmhand pipe {PipeName} disconnected or could not be opened.", PipeName);
 			}
+			catch (Exception exception)
+			{
+				logger.LogError(exception, "Unexpected error while reading Farmhand pipe {PipeName}.", PipeName);
+			}
 			finally
 			{
 				if (!stoppingToken.IsCancellationRequested)
@@ -54,7 +58,7 @@ public sealed class FarmhandPipeReader(
 		logger.LogInformation("Attempting to connect to Farmhand pipe {PipeName}.", PipeName);
 
 		await using var pipe = new NamedPipeServerStream(
-					"flowkits_fs25_edge",
+					PipeName,
 					PipeDirection.In,
 					1,
 					PipeTransmissionMode.Byte,
@@ -65,7 +69,7 @@ public sealed class FarmhandPipeReader(
 
 		using var reader = new StreamReader(
 			pipe,
-			new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true),
+			Encoding.UTF8,
 			detectEncodingFromByteOrderMarks: false,
 			bufferSize: 4096,
 			leaveOpen: false);
