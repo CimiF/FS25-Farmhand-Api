@@ -15,4 +15,11 @@
     <Folder Include="Farmhand\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="FS25Gateway.Web\**" />
+    <Content Remove="FS25Gateway.Web\**" />
+    <EmbeddedResource Remove="FS25Gateway.Web\**" />
+    <None Remove="FS25Gateway.Web\**" />
+  </ItemGroup>
+
 </Project>

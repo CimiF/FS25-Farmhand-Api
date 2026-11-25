@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="FS25-Farmhand-Api.csproj" />
+  <Project Path="FS25Gateway.Web/FS25Gateway.Web.csproj" />
 </Solution>

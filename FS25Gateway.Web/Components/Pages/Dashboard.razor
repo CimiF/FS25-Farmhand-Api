@@ -1,0 +1,220 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@using FS25Gateway.Web.Models
+@using FS25Gateway.Web.Services
+@inject FarmApiClient ApiClient
+
+<PageTitle>Dashboard | FS25Gateway</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-6">
+    <div>
+        <MudText Typo="Typo.h4">Farm dashboard</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">FS25Gateway live overview</MudText>
+    </div>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync" Disabled="@_isLoading">
+        Refresh
+    </MudButton>
+</div>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-center pa-8">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+    </div>
+}
+else if (_errorMessage is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Filled">
+        @_errorMessage
+    </MudAlert>
+}
+else if (_snapshot is not null)
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="6">
+            <MudCard Class="dashboard-card" Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Weather</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Current conditions</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIcon Icon="@Icons.Material.Filled.WbSunny" Color="Color.Warning" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_snapshot.Weather is { } weather)
+                    {
+                        <div class="d-flex align-center gap-4">
+                            <MudText Typo="Typo.h3">@(weather.Temperature?.ToString("0.0") ?? "—") °C</MudText>
+                            <div>
+                                <MudText>@(weather.CurrentType ?? "Unknown")</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    @(weather.IsRaining ? "Rain currently active" : "No rain currently")
+                                </MudText>
+                            </div>
+                        </div>
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.body2">Forecast items: @weather.Forecast.Count</MudText>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Secondary">No weather data available.</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Class="dashboard-card" Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Workers</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Active and assigned vehicles</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudBadge Content="@WorkerVehicles.Count" Color="Color.Primary" Overlap="true">
+                            <MudIcon Icon="@Icons.Material.Filled.Agriculture" />
+                        </MudBadge>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (WorkerVehicles.Count == 0)
+                    {
+                        <MudText Color="Color.Secondary">No workers reported.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var vehicle in WorkerVehicles.Take(5))
+                            {
+                                <MudListItem T="string">
+                                    <MudText>@vehicle.Name</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(vehicle.Worker?.Status ?? "Unknown") · @(vehicle.Worker?.Job ?? "No job")
+                                    </MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Class="dashboard-card" Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Contracts</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Available and active missions</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Info" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_snapshot.Contracts.Count == 0)
+                    {
+                        <MudText Color="Color.Secondary">No contracts reported.</MudText>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var contract in _snapshot.Contracts.Values.Take(5))
+                            {
+                                <MudListItem T="string">
+                                    <MudText>@(contract.Title ?? contract.Type ?? contract.Id)</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        @(contract.Status ?? "Unknown") · @contract.Reward.ToString("0")
+                                    </MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Class="dashboard-card" Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Alerts</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Farm attention items</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIcon Icon="@Icons.Material.Filled.NotificationsActive" Color="Color.Error" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (Alerts.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">No active alerts.</MudAlert>
+                    }
+                    else
+                    {
+                        @foreach (var alert in Alerts.Take(5))
+                        {
+                            <MudAlert Severity="ToSeverity(alert.Severity)" Dense="true" Class="mb-2">
+                                @alert.Message
+                            </MudAlert>
+                        }
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private DashboardSnapshotDto? _snapshot;
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private IReadOnlyList<VehicleDto> WorkerVehicles =>
+        _snapshot?.Vehicles.Values.Where(vehicle => vehicle.Worker is not null).ToArray()
+        ?? Array.Empty<VehicleDto>();
+
+    private IReadOnlyList<AlertDto> Alerts =>
+        _snapshot?.Alerts?.Items.Where(alert => !alert.IsAcknowledged).ToArray()
+        ?? Array.Empty<AlertDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _snapshot = await ApiClient.GetDashboardSnapshotAsync();
+            if (_snapshot is null)
+            {
+                _errorMessage = "The API returned an empty dashboard snapshot.";
+            }
+        }
+        catch (HttpRequestException exception)
+        {
+            _errorMessage = $"Unable to reach the FS25Gateway API: {exception.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "The dashboard request timed out.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static Severity ToSeverity(string? severity) => severity?.ToLowerInvariant() switch
+    {
+        "critical" => Severity.Error,
+        "warning" => Severity.Warning,
+        _ => Severity.Info
+    };
+}

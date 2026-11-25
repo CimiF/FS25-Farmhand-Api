@@ -51,6 +51,9 @@ app.MapGet("/health", () => new
 	Time = DateTime.Now
 });
 
+app.MapGet("/api/dashboard/snapshot", (StateStore stateStore) =>
+	Results.Ok(stateStore.Read(state => state)));
+
 
 app.UseHttpsRedirection();
 
